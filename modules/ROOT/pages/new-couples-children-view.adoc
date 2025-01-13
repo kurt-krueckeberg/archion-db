@@ -1,0 +1,37 @@
+== All Couples With or Without Any Children
+
+Create a Left Outer Join of all couples--married and unmarried
+and then do a left out join with children. Children being those
+`event_persons.id` who are in `person2` in a `parent_child`
+relationship fact. 
+
+This is like the view `parents_with_children` in that we 
+do a left join that shows which married couples have children
+and which couples, who were unmarried at the time, had il
+legitimate children, and which married couples have no
+children who can be joined with them. 
+
+[source,sql]
+----
+create or replace view all_couples_maybe_children as
+select
+     male_partner_given,
+     male_partner_surname,
+     male_partner_id,
+     female_partner_given,
+     female_partner_surname,
+     female_partner_id,
+     type_of_relationship,
+     person2,
+     children.given as child_given,
+     children.surname as child_surname, 
+     children.id as child_id
+     parent_child_facts.type  
+  from
+     all_couples
+  left outer join
+     event_persons as children
+     on person2=children.id and type_of_relationship='parent_child';
+----
+
+

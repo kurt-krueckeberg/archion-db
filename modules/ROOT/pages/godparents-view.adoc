@@ -1,0 +1,30 @@
+= Godparents
+
+Godparents is a view because the name of the godparent and the infanct
+can be derived from the relationships table:
+
+The relationship fact `godparent_child` allows us to insert a newly found
+godparent into the `godparents` table. A child may have more than one
+godparent and individual who is a godparent may have been or may yet be
+the godparent of other infants. The primary key is thus the pair (`id`,
+`child_id`), where both `godparents.id` and `godparents.child_id` are
+foreign keys refereing the respecitve `event_persons.id`.
+
+[source,sql]
+----
+create or replace view godparents as
+select 
+     godparent.given   as godparent_given,
+     godparent.surname as godparent_surname,
+     infants.given      as infants_given,
+     infants.surname    as infants_surname,
+     infants.id         as infants_id,
+     godparent.id      as godparent_id,  
+     rf.id              as rf_id
+  from
+     event_persons as godparent
+  inner join relationships as rf
+     on rf.person1=godparent.id
+  inner join event_persons as infants 
+     on rf.person2=infants.id;
+----

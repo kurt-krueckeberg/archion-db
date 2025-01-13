@@ -1,0 +1,52 @@
+= TODO
+
+* TODO: Database question: Is the a fact's date the date the fact occurred, or the date of the event in which it is mentioned? +
+Move this conclusion and place it somewhere in the documention:
+
+== shared_residences
+
+Is `shared_residences` still needed now that we have `place_names` and
+`places`?
+
+We need to create a view or join that allows us to have the canonical
+name along side the place nmae used in the actual entry. Something like
+this:
+
+[,sql]
+----
+create or replace view places_with_canonical_name
+select p.address,
+       pn.locality 
+       canonical.locality as canonical_name
+   from places as p
+     inner join place_names as pn
+       on p.placename_id=pn.id
+     inner join place_names as canonical
+       on canonical.id=pn.aliasof_id 
+----
+  
+== Facts with Required Details
+
+Three fact types
+
+* 'job'
+* 'remarks'
+* 'death_cause'
+
+all have associated text. Currently three additional tables hold the job descrtipion, any remarks
+and the cause of death.  All three tables have a `varchar`.  Since `paerson_facts.type` implies
+what the `varchar` contains, we replace these three tables with one name `fact_details`:
+
+[,sql]
+----
+create table if not exists facts_detail (
+  fact_id int not null primary key,
+  detail varchar(55) not null
+  foreign key(fact_id) references person_facts(id)
+);
+----
+
+IMPORTANT: We need to or alter any querys that return jobs held or remarks/miscellaneous
+information.
+
+

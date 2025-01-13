@@ -1,0 +1,153 @@
+= Yaml Facts Files
+
+The fact-containing yaml files have the format desribed below. The main
+difference lies in the type of events described and is required for each
+event type. This is still being determined.
+
+== `general-settings.yml` File
+
+
+
+== Top-Level Keys
+
+The two top-most keys in the yaml files are: `register_shortname` and `image`.
+Example **yaml** file:
+
+[,yaml]
+----
+register_shortname: petzen2
+image:
+  image_no: 348
+  permalink: http://www.archion.de/p/de1fdbc46c/
+  lpage_no: 722
+  ymlfile: ymlfile_name_here
+  events:
+----
+
+=== regsiters_shortname
+
+`register_shortname` corresponds to `registers.shortname`. It is a unique abbreviation
+used to query the primary key.
+
+=== image
+
+The `image` key consists of a subarray whose keys must be in the order shown:
+
+[caption="**image** subarray keys"]
+[cols="a1,a2",frame="none",grid="rows"]
+|===
+|yaml key|corresponding attribute
+
+|`image_no`|`images.image_no`
+
+|`permalink`|`images.permalink`
+
+|`lpage_no`|`images.lpage_no`
+
+|`ymfile`|`images.ymlfile`
+
+|`events`|see discussion below
+|===
+
+=== events
+
+`events` has a numerically-base subarray of individual events, and each each
+event has subarrays. Each event type will have a least on element in the
+`persons` subarray, and there will be at least one fact element in `facts`
+array. Birth and baptism event types will always have at least one element
+in the `relationships` subarray. Confirmation and death/burial may not have
+any; it is unclear at this point. 
+It may have more subarrays which are described later.
+
+[,yaml]
+----
+image:
+  # snipped
+  ymlfile: ymlfile_name_here
+  events:
+    - event: marriage
+      place: Petzen
+      view_date: 2024-01-10 
+      date: 1826-10-15
+      entry_no: 4
+      persons:
+        - object_hash: &father1 'father1'
+          given: Johann Heinrich
+          surname: Jäger
+          gender: male
+        - object_hash: &son 'son'
+          given: Johann Heinrich
+          surname: Jäger    
+          gender: male
+      relationships:
+        - type: parent_of
+          person1: *father1
+          person2: son
+      facts:
+        # Remainder snipped
+----
+
+==== Event properties
+
+The top-level event key's values will be saved in these database relvar
+attributes:
+
+[caption="**image** subarray keys"]
+[cols="a1,a2"]
+|===
+|yaml key|corresponding attribute
+
+|`event`|`events.event`
+
+|`place`|`events.place`
+
+|`view_date`|`events.view_date`
+
+|`date`|`events.date`
+
+|`entry_no`|`events.entry_no`
+
+|`ymlfile`|`events.ymlfile`
+|===
+
+=== facts
+
+The date of a fact may be either unknonw, an approximate year (that is off by a year), or an 
+exact date, which is typically the same as the event date, but not not be.
+
+Facts with extra details include...
+
+type: is one of the following:
+
+* job
+* baptism
+* birth
+* approx_birth_year
+* birth_order
+* sex_birth_order
+* residence
+* marriage
+* proclaimed
+* death
+* death_cause
+* gender
+* burial
+* confirmation
+* funeral
+* illegitimate  
+* legitimate
+* widow
+* widower
+* virgin
+* remark
+   
+`date_accuracy`: is one of ('unknown', 'approx_year', 'known')
+
+date: is either 000-00-00 or YYY-00-00 or YYY-MM-DD
+
+The convention used in the fact-continaing yaml files is that 'placeref' will simply be identical to `place_names.locality` --
+except the first letter will be lowercase. The code that reads the .yml files will follow this this convention: it will upper.
+
+The code that needs to be changed, simplified is `PlcesMgr.php` and `Orm.php`, and perhaps `general-settings.yml`.
+* `places` is really the relvar with residences. All the people who live in a particular residence, `places.id`, are in
+stored in `shared_residences`.

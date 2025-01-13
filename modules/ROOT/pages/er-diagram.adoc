@@ -1,0 +1,8 @@
+= ER Diagram Online
+:page-role: doc-width
+
+//Available link:https://dbdocs.io/kurt.krueckeberg/Archion-database?schema=public&view=relationships&table=archives[here]
+
+++++
+<iframe  allowfullscreen width="50%" height="50%" src="https://dbdocs.io/embed/ec3f02c3f47663f8d884a1c6a8a54fa4/cc54bf0ab9b1447db907b48f5d5bab35"> </iframe>
+++++

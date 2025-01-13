@@ -1,0 +1,3 @@
+= Archion Database Design
+
+The design of the database schema is in the link:design.md[design] document.

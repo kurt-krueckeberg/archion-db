@@ -1,0 +1,9 @@
+= Description of Tables
+
+The tables are grouped by the common purpose they serve. There 
+are tables related to
+
+* documentation
+* facts about individuals and their family and religious
+relationships
+* remarks that are not neatly classifiable

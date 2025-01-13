@@ -1,0 +1,65 @@
+= Fact Related Views 
+
+== Shared Residences
+
+The view `homes` selects the address, the `locality` and `num` (home number),
+for for all persons in `event_persons` whose address has been recorded in
+an event.
+
+[source,sql]
+----
+create or replace view homes as
+select concat_ws(ep.given, ' ', ep.surname) as name,
+       res.address  as address,
+       pn.locality as locality, offical_pn_spelling.locality as official_spelling
+ from 
+   event_persons as ep
+ join
+   person_facts as pf
+     on pf.person_id=ep.id AND pf.type='residence'
+ join
+   shared_residences as sr
+     on sr.fact_id=pf.id
+ join residences as res
+     on sr.place_id=res.id
+ join place_names as pn
+     on pn.id=res.placename_id
+ join place_names as offical_pn_spelling 
+     on pn.aliasof_id=offical_pn_spelling.id;
+----
+
+== Facts with Details
+
+For individuals with facts that have associated details, the derived `detailed_facts` view returns
+all facts including those with details:
+
+[source,sql]
+----
+create or replace view detailed_facts as
+select concat_ws(ep.given, ' ', ep.surname) as name,
+   d.details as details
+ from 
+   event_persons as ep
+ join 
+   person_facts as pf
+      on pf.person_id=ep.id
+ left join
+   facts_details as d
+     on d.fact_id=pf.id;
+----
+
+[NOTE]
+.`left join` versus `join`
+====
+`inner join` only returns common rows between two table. There might
+not be any.`
+====
+
+=== Occupations
+
+Using the view above, we can select all occupates or jobs held by
+a person simply by using relational algebra select:
+
+* `select * from detailed_facts where pf.type='job'`
+* `select * from detailed_facts where pf.type='death_cause'`
+

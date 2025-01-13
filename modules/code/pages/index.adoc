@@ -1,0 +1,64 @@
+= Archion DB Code Design
+
+The facts recorded in German Kirchenbücher that need to be inserted into the `archion` database
+are in **yaml** files. For every Antora `.adoc` file that contains an event's  transliteration
+and translation, there is a corresponding fact-containing `yaml`.
+
+First, though, these top-level documentation tables must be populated in order to use the fact-containing **yaml** file: 
+
+* `archives`
+* `collections`
+* `parishes`
+* `parish_collections`
+* `parish_registers`
+
+The database tables used for citations has a section on xref:archion-db:ROOT:documentation-tables.adoc#inserting-top-level-navigation[inserting top level documentation].
+This shows the insertions needed to begin using the **yaml** files for those Petzen and Frille church ceremonies **.adoc** files.
+
+== `registers_shortname.yml`
+
+This file has all the required `registers.shortname` that are used in the 
+individual fact-containing `.yml` files. It looks like, for example, this:
+
+[,yml]
+----
+- petzen1a
+- petzen1b
+- petzen2
+- frille1
+- frille2
+----
+
+Each shortname in the files must be unique and the relvar attribute `registers.shortname`
+is itself a unique key.
+
+The following prospective code can read the yaml file and create an
+associative array that maps the unique `registers.yml_key` to `registers.id`.
+
+[,php]
+----
+<?php
+declare(strict_types=1);
+
+$pdo = new \PDO("mysql:host=localhost;dbname=archion;user=xxxx;password=yyyy");
+
+$stmt = $pdo->query('select shortname, id from registers');
+
+$results = $stmt->fetchAll(\PDO::FETCH_COLUMN|\PDO::FETCH_GROUP|\PDO::FETCH_UNIQUE);
+
+$shortnames = \yaml_parse(file_get_contents('registers_shortnames.yml'));
+
+$registers_map = [];
+
+foreach ($shortnames as $shortname) {
+
+   if (!isset($query_results[$shortname]))
+      throw new \ErrorException("registers table is missing the
+                                yml_key $yml_key."); 
+
+  // Associate the shortname with "registers.id", the primary
+  // key.
+  $registers_map[$shortname] = $results[$shortname][0]; 
+}
+----
+

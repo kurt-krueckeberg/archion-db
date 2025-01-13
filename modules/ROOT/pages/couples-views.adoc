@@ -1,0 +1,299 @@
+= Families and Couples
+
+== All Couples
+
+This view gives all couples, men and women, who either had
+a child together, legitimate or illegitimate, or those mean
+and women who are married. This will be those
+
+1. married pairs where `relationships.type=husband_wife` and
+and the husband is `relationships.person1` and the wife is
+`relationships.person2`.
+
+2. Those who have a `relationships.type=parent_child`.
+
+Thus we want to select those individuals from the set of all individuals
+who are either parents of married.
+
+[NOTE]
+.Sample data is needed
+====
+
+A variety of sample data is needed and then the two alternate
+queries needs to be tested and thought through using the sample
+data. This sample data must include:
+
+1. couples with illegitmate children
+2. married couples without children
+3. married couple with children
+
+====
+
+[source,sql]
+----
+create or replace view all_couples as
+select 
+   concat_ws(men.given, ' ', men.surname) as male_partner,
+   men.id        as male_partner_id,
+   concat_ws(women.given, ' ', women.surname) as female_partner,
+   women.id      as female_partner_id,
+   r.id          as relationship_id,
+   r.type        as type_of_relationship,
+   r.person2     as person2,
+   events.evdate   as event_date,
+   events.event  as event_type,
+   events.id     as event_id
+ from 
+    event_persons as men
+ join
+    relationships as r
+      on r.person1=men.id and men.gender='male'
+      and (r.type='parent_child' or r.type='husband_wife')
+  join
+    event_persons as women
+      on (women.id=r.person2 and
+         women.gender='female' and r.type='husband_wife')
+      or (women.id=r.person1 and
+          women.gender='female' and r.type='parent_child')
+  join 
+    events on events.id=r.event_id;
+----
+
+[NOTE]
+.Implication of `unmarried_couple` relationship type.
+====
+An `unmarried_couple` relationship is not like a modern living-together relationship,
+and it is only becomes evident when either
+
+. a birth is noted as illegitimate or
+. a birde is noted as pregnant.
+
+If a `couples` relationship type is introduced, the view could then be written:
+
+[,sql]
+----
+create or replace view all_couples as
+select 
+   concat_ws(men.given, ' ', men.surname) as male_partner,
+   men.id        as male_partner_id,
+   concat_ws(women.given, ' ', women.surname) as female_partner,
+   women.id      as female_partner_id,
+   r.id          as relationship_id,
+   r.type        as type_of_relationship,
+   r.person2     as person2,
+   events.evdate   as event_date,
+   events.event  as event_type,
+   events.id     as event_id
+ from 
+    event_persons as men
+ join
+    relationships as r
+      on r.person1=men.id and men.gender='male'
+      and (r.type='couple' or r.type='husband_wife')
+ join
+    event_persons as women
+      on (women.id=r.person2 and
+         women.gender='female' and r.type='husband_wife')
+      or (women.id=r.person1 and
+          women.gender='female' and r.type='couple')
+ join 
+   events on events.id=r.event_id;
+----
+====
+
+[IMPORTANT]
+.Further explanation of `event_persons as women`
+====
+We don't need to do add the **and** condition `and wives.gender='female'`
+
+```sql
+  join
+    event_persons as wives
+      on wives.id=rf.person2 and wives.gender='female'
+```
+
+because the join immediately above it includes
+**and fathers.gender='male'**:
+
+And `person1` in this protion of the query
+
+```sql
+join
+    relationships as rf
+      on rf.person1=fathers.id and fathers.gender='male'
+```
+
+is _guaranteed_ to be a **male**. `r.person2` could also be
+another male--if the relationship type is `godfather_infant`
+or `parent_of`; however, if the relationshp type is
+`husband_wife`, then `person2` is required to be female, and
+we don't need to also add `and mothers.gender='female'`.
+
+While all three possible relationships will be contained in
+the result, the _where_ clause limits the result to tuples
+where the relationship type is `husband_wife`.
+====
+
+[NOTE]
+.Ordering by date
+====
+
+The `all_couples` view can be sorted `asc` by `event_date`:
+
+```sql
+select * from all_couples order by asc
+```
+
+====
+
+An alternate query using `union` can also be done:
+
+[source,sql]
+----
+create or replace view all_couples2 as
+(select
+   men.given       as male_given,
+   men.surname     as male_surname,
+   men.id          as male_id,
+   females.given   as female_given,
+   females.surname as female_surname,
+   females.id      as female_id,
+   rf.type         as type_of_relationship,
+   rf.person2      as person2,
+   events.evdate  as event_date,
+   events.event as event_type
+ from
+    event_persons as men
+ join
+    relationships as rf
+      on rf.person1=men.id and men.gender='male'
+  join
+    event_persons as females
+      on females.id=rf.person2
+  join
+    events
+      on events.id=rf.event_id
+where rf.type='husband_wife')
+union
+(
+select
+   men.given         as male_given,
+   men.surname       as male_surname,
+   men.id            as male_id,
+   females.given     as female_given,
+   females.surname   as female_surname,
+   females.id        as female_id,
+   rf.type           as relationship_type,
+   rf.person2        as person2,
+   events.evdate  as event_date,
+   events.event as event_type
+ from
+    event_persons as men
+ join
+    relationships as rf
+      on rf.person1=men.id and men.gender='male'
+  join
+    event_persons as females
+      on females.id=rf.person2 and females.gender='female'
+  join
+    events
+      on events.id=rf.event_id
+where rf.type='parent_child');
+----
+
+[NOTE]
+.Difference between `union` and `union all`
+====
+The difference between `union` and `union all` is that `union` joins tuples from the 
+first subquery with those in the second subquery, but it removes any tuples in both
+subqueries. We are selecting two distinct sets that do not overlap. `union all`
+is therefore not needed.
+====
+
+== All Couples With or Without Any Children
+
+Create a Left Outer Join of all couples--married and unmarried
+and then do a left out join with children. Children being those
+`event_persons.id` who are in `person2` in a `parent_child`
+relationship fact. 
+
+This is like the view `parents_with_children` in that we 
+do a left join that shows which married couples have children
+and which couples, who were unmarried at the time, had il
+legitimate children, and which married couples have no
+children who can be joined with them. 
+
+TODO: relationship_id is ambigous below in:
+`...on relationship_id=pc_facts.relationship.id`
+
+[source,sql]
+----
+create or replace view all_couples_maybe_children as
+select
+     male_partner,
+     male_partner_id,
+     female_partner,
+     female_partner_id,
+     all_couples.relationship_id,
+     type_of_relationship,
+     person2,
+     concat_ws(children.given, ' ', children.surname) as child, 
+     children.id as child_id
+  from
+     all_couples
+  left join
+     event_persons as children
+       on person2=children.id and type_of_relationship='parent_child';
+----
+
+== Parents Who Have Children
+
+The view `parents_with_children` show the couples, married or
+unmarried, who have had children. It display the father, mother,
+and all their children.
+
+Couple may have had children legitimately or illegitimately.
+These are all individuals in the `relationships` table in
+either `relationships.person1` or  `relationships.person2`
+where the `relationships.type` is 'parent_child'. 
+
+We get the prospective children in `event_persons` by joining
+`event_person` with `relationships`. The prospective kids
+will be where
+
+`event_persons.id=relationships.person2`
+
+Next we join that result with those individuals who are male in
+`event_persons` with `person1`, and we join this result with
+those individuals in `event_persons` who are females with `person1`.
+
+We project or select on the result of these joins those tuples
+where the relationship type is `parent_child`. We now have all fathers
+and mothers paired together with their children.
+
+[source,sql]
+----
+create or replace view parents_with_children as
+select 
+  fathers.given   as fathers_given,
+  fathers.surname as fathers_surname,
+  fathers.id      as fathers_id,
+  mothers.given   as mothers_given,
+  mothers.surname as mothers_surname,
+  mothers.id      as mothers_id,
+  kids.given      as child_given,
+  kids.surname    as child_surname,
+  kids.id         as child_id
+ from 
+    event_persons as kids
+ join
+    relationships as r
+      on r.person2=kids.id
+  join 
+    event_persons as fathers
+      on fathers.id=r.person1 and fathers.gender='male'
+  join
+    event_persons as mothers
+      on mothers.id=r.person1 and mothers.gender='female'
+  where r.type='parent_child';
+----

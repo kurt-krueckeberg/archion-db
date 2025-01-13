@@ -1,0 +1,112 @@
+= Yml Events
+
+The events section looks like this:
+
+[,yml]
+----
+events:
+  - event: marriage
+    place: ???
+    view_date: ?? 
+    date: 1826-10-15
+    entry_number: 3
+    ymlfile: petzen2-image35.yml 
+    persons:
+      - object_hash: &father1 'father1'
+        given: Johann Heinrich
+        surname: Jäger
+        gender: male
+      - object_hash: &son 'son'
+        given: Johann Heinrich
+        surname: Jäger    
+        gender: male
+      - object_hash: &father2 'father2'
+        given: Carl Heinrich Gottlieb
+        surname: Krückeberg
+        gender: male
+      - object_hash: &daughter 'daughter'
+        given: Philippine Christine
+        surname: Krückeberg
+        gender: female
+    relationships:
+      - type: parent_of
+        person1: *father1
+        person2: son
+      - type: parent_of
+        person1: *father2
+        person2: *daughter
+      - type: husband_of
+        person1: *son
+        person2: *daughter
+    addresses:
+      - object_hash: &nordholz nordholz
+        number: 5
+        locality: Nordholz
+      - object_hash: &berenbusch berenbusch
+        number: 8
+        locality: Bärenbusch
+    facts:
+      - type: marriage
+        place: ??
+      - type: residence
+        address: *nordholz
+        persons:
+          - person: father1
+          - person: son
+      - type: residence
+        address: *berenbusch
+        persons:
+          - person: father2
+          - person: daughter
+      - type: legitimate
+        person: son
+      - type: legitimate
+        person: daughter
+      - type: birth_date
+        person: son
+        date: abt. 1822
+      - type: birth_date
+        date: abt. 1823
+        person: daughter
+      - type: misc
+        person: son
+        remark: "Anerbe, principal heir"
+----
+
+Because residence and jobs fact need to reference the shared address or
+job held, the `addresses` and `jobs` or `jobs_held` block needs to come
+before the `facts`. The `object_hash` -- or another name like `object_key` --
+can be used as **key** of its element in `Event::$shared_addresses`.
+
+And we can make the individual Facts in the facts array to be either a `stdClass`
+or itself an array. Doing this will allow an array fact to simply have another
+key-/value pair like, say, `address_key => 'nordholz'`.
+
+The `relationships` table requires has two attributes that are foreign keys:
+`person1` and `person2`. When `relationships[0]` is to be save, i.e., inserted,
+into the database, it will look up the `event_persons.id` primary keys for
+`father1` and `son`:
+
+[,php]
+----
+// father1 is saved to db
+$father1->save($repo);
+
+function Person::save(Repo $r)
+{
+  /*
+   $this->person is an array with the `EventPerson` attribute
+   values.
+
+   The next statements below may be done by an Orm component?
+   */
+  
+  $prepared_stmt->execute($this->person); 
+
+  $father1_primary_key = $pdo->lastInsertId();
+
+  $this->ymlKeytoPrimaryKeyMap[$this->yml_key] = $father1_primary_key;
+}
+----
+
+

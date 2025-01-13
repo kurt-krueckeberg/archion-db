@@ -1,0 +1,57 @@
+= Fact Types
+
+The possible fact type's that can occur in the `facts:` section of the `yml` file are:
+ 
+* `job`
+* `baptism`
+* `birth`
+* `approx_birth_year`
+* `birth_order`
+* `sex_birth_order`
+* `residence`
+* `marriage`
+* `proclaimed`
+* `deceased`
+* `death`
+* `death_cause`
+* `gender`
+* `burial`
+* `confirmation`
+* `funeral`
+* `illegitimate`
+* `legitimate`
+* `widow`
+* `widower`
+* `virgin`
+* `remark`
+
+Examples:
+
+[,yml]
+----
+persons:
+  - key: &father1 'father1'
+    given: Johann Heinrich
+    surname: Jäger
+    gender: male
+    facts:
+      - type: residence
+        fact_date: *event_date
+        locality: nordholz-5
+      - type: widower
+        fact_date: *event_date
+        locality: nordholz-5
+    - type: approx_birth_year # Calculated from 'age'
+        fact_date: 1780-00-00
+        locality: nordholz-5
+----
+
+[NOTE]
+====
+Some facts require extra information besides the data of the event; for example, the
+integer value of a `birth_order` or `sex_birth_order` fact is stored in the `birth_orders`
+table. The address in a `residence` fact is stored in `places.address`.
+
+The other facts that have extra data are 'job', which has a description....and....
+====
+

@@ -1,0 +1,50 @@
+= Evidence
+
+Further ideas on evidence of identity.
+
+== Propsective inter-event Relationship Tables
+
+To link couples based on shared identifying attributes found in
+different church entries could be done. This should be based on keeping
+tracking as many common identifying facts as possible, perhaps along
+with notes or comments about these common linking facts. One idea would
+be a `couples` table, along with a `children` table and a
+`couples_evidence` table that contains facts from several different
+recorded church entries. Maybe we also need to include facts like
+jobs-held and residences lived in?
+
+It would be good to review Shannon Green’s article that inspired this
+database.
+
+This is one such prospective table for `couples_evidence`.
+
+[source,sql]
+----
+create table if not exists couples_evidence (
+   id int not null auto_increment primary key,
+   couple_id int not null,
+   relationships_id int not null,
+   unique (couple_id, relationships_id),
+   foreign key (couple_id) references couples(id),
+   foreign key (relationships_id) references relationships(id)
+) engine = INNODB;
+----
+
+== Table for Individaul Facts found in a Recorded Event?
+
+A view with all the individual facts that are not related
+
+== Table for an Evidence-Based Prospective Family Tree
+
+This table is related to conclusions for common identity between
+`image_persons` I think it should hold the common shared facts.
+
+[source,sql]
+----
+create table if not exists common_characteristitcs/identities (
+ person1 int not null,
+ person2 int not null,
+ ????
+ primary key(person1,  person_inages
+);
+----

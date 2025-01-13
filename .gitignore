@@ -1,0 +1,10 @@
+*.html
+.bundle
+nbproject/
+.*.swp
+netbeans/
+.vscode*
+code/vendor
+code/src/archion/*Config.php
+node_modules/
+public/

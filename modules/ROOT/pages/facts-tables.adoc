@@ -1,0 +1,270 @@
+= Facts
+
+== Persons Named in Events
+
+`event_persons` are the individuals mentioned in a church register
+entry. Each individual in a recorded ceremnoy will have a unique id,
+even if it is ``obvious'' that they are the same person in different
+entry.
+
+The `event_persons` table has the primary key `id`, the person's given
+name `given` (possibly more than one), their surname `surname`, their
+gender, and a reference to the foreign key of the church register entry
+in which they are mentioned. The name is their identity in the entry in
+which they are mentioned.
+
+In this design each person mentioned in an different event/ceremony,
+is a new unique person in `event_persons`, even if it "obvious" they
+are the same person mentioned in the current event.
+
+[source,sql]
+----
+-- If `gender` is not clear from the name, use `unknown`.
+create table if not exists event_persons (
+  id int not null auto_increment primary key,
+  given varchar(45) not null,
+  surname varchar(25) not null,
+  gender enum('male', 'female', 'unknown'),
+  event_id int not null,
+  fulltext (given, surname),
+  foreign key(event_id) references events(id)
+) engine = INNODB;
+----
+
+== Facts about Individuals
+
+Facts about a event-person `event_persons.id` will be "listed" in the 
+the `person_facts` relvar.
+
+`person_facts` has the primary key `id`, a reference to the person  `person_id`,
+a reference to the entry id `event_id`, and the type of fact `type`. While there
+may be more than one fact about a person in an entry, each will be a different type,
+thus `(person_id, event_id, type)` will be unique.
+
+[NOTE]
+====
+The `approx_birth_year` is a date of the form YYYY-00-00. It is the approximate
+birth year calculated when an **age** of an individual is given in an event. It is
+caculatied as: `approximate_birth_year = event_date - persons_age`
+
+An example, would be a widower who is age 42 when he marries in 1822. The YML
+`details` key will have a value of `1780-00-00`. For example,
+
+[,yaml]
+----
+persons:
+  - key: &husband 'husband'
+    given: Friedrich Wilhelm
+    surname: Drifftmeier
+    gender: male
+    facts:
+      - type: marriage
+        date: *event_date
+        date_type: known
+      - type: approx_birth_year # <--- a calculation derived from the 'age' listed in the event.
+        date: 1780-00-00 # <--- We do not use the event date for the fact date!
+        date_type: approx_year
+----
+====
+
+[source,sql]
+----
+create table if not exists person_facts (
+   id int not null auto_increment primary key,
+   type enum(
+     'job',
+     'baptism',
+     'birth',
+     'approx_birth_year',
+     'child--_birth_order',
+     'sex_birth_order',
+     'residence',
+     'marriage',
+     'proclaimed',
+     'death',
+     'deceased',
+     'death_cause',
+     'gender',
+     'burial',
+     'confirmation',
+     'funeral',
+     'illegitimate',  
+     'legitimate',
+     'married',
+     'widow',
+     'widower',
+     'virgin',
+     'remark'
+   ) not null,
+   person_id int not null, 
+   event_id int not null,
+   date_type enum('unknown', 'approx_year', 'known'),
+   date date not null,
+   place_id int not null, 
+   unique (person_id, event_id, type),
+   foreign key(person_id) references event_persons(id),
+   foreign key(event_id)  references events(id),
+   foreign key(place_id)  references place_names(id)
+) engine = INNODB;
+----
+
+[NOTE]
+.Why no **name** fact?
+====
+Events and their facts name indivudual. There identify indviduals by their name.
+This is their identity. This database is designed to store other facts about
+the individuals mentioned, so we don't rely just on their name, which is not always
+unique.
+====
+
+//=== Birth Orders 
+//
+//Not all events in which a `birth` fact occurs will necessarily mention the birth order
+//(or sex birth order), so when we record the attributes of an individual in a unique
+//event, we cannot always record their birth order or sex birth order. Instead we use
+//the separate `birth_orders` table.
+//
+//[source,sql]
+//----
+//create table if not exists birth_orders (
+// fact_id int not null,
+// order int not null,
+//-- type enum('child_order', 'sex_order'),
+// primary key(fact_id),
+// foreign key(fact_id) references person_facts(id)
+//) engine = INNODB;
+//----
+
+== Relationships 
+
+When a relationship fact is discovered in a recorded entry, it is saved
+in `relationships`. All other, non-relationship, individual facts are
+in `person_facts`. 
+
+There are three facts, possibly four, specific relationships between two people:
+
+[arabic]
+. A parent who has a child: **parent_child**
+. A sponsor or godparent of a baptized infant: **godparent_infant**
+. A man who marries a woman: **husband_wife**
+. A **unmarried_couple** relationship is an unmarried herterosexual couple that
+is typically is encountered only when there is an illegitimate birth mentioned
+either in a birth record of the illegitimate child or a pregnancy noted when
+a bride marries.
+
+[,sql]
+----
+-- Relationship facts
+create table if not exists relationships (
+   id int not null auto_increment primary key,
+   type enum('husband_wife', 'godparent_infant',
+             'parent_child', 'unmarried_couple') not null,
+   person1 int not null,
+   person2 int not null,
+   event_id int null,
+   unique(person1, person2, type),
+   foreign key(person1) references event_persons(id),
+   foreign key(person2) references event_persons(id),
+   foreign key(event_id) references events(id)
+) engine = INNODB;
+----
+
+`relationships` holds all the relationships between two
+people. Each relationship fact has a primary key `id`, a `type`
+that is an enum of the three valid fact types mentioned immediately
+abov, **person1** references the first person in the realtionship
+and **person2** refers to the 2nd person in the relationship. For
+example, in the **husband_wife** relationship, **person1** refers to
+the husband and **person2** refers to the wife. Finally, **event_id**
+is a foreign key that references the particular **events.id** where
+the relationship is mentioned.
+
+Why is `(person1, person2, type)` unique? If the realtionship type
+is `parent_child`, `person1`, the parent, can be the parent of
+`person2` only once. The same logic applies if `person1` is the
+`godparent_child` of `person2` or the `husband_wife` of `person2`.
+
+== Facts about Residences
+
+Residences most often are shared with other persons who are family members.
+Over time different individuals, often children, came to live at the
+same residence, which had--one assumes--had the same address number.
+
+How do we handle the date when the person lived there? If each
+person in each event is conisdered unique, then isn’t their residence at
+the time of the event also unique? With each recorded church ceremony, aren’t we
+just tracking or capuring a moment in time, a snapshot? Isn’t that what
+this database is all about?
+
+[source,sql]
+----
+create table if not exists shared_residences (
+   place_id int not null,
+   fact_id int not null,
+   primary key(place_id, fact_id),
+   foreign key(place_id) references residences(id),
+   foreign key(fact_id) references person_facts(id)
+) engine = INNODB;
+----
+
+== Facts that have Extra Information
+
+These `person_facts.type` have additional information: 
+
+* **job** has a job  desription
+* **child_birth_order** has the order of birth with respect to the other children.
+* **sex_birth_order** has the order of birth among the other girls or other boys.
+* **death_cause** has the cause of death
+* **remark** has the comments about an individual
+
+NOTE: 'aprox_birth_year' is an additional piece of informtion mentioned in a non-birth record,
+but it does not hold extra information besides the `person_facts.fact_date` that is the calculated 
+approximate year of birth.
+
+**TODO:** `birth_orders` seems redundant if we already have `fact_details`.
+
+.Table holding additional fact information
+[cols="1,3,2",%autoheader]
+|===
+|Fact type|Additional Info|Table with the Add. Info
+
+|'job'|job description|`fact_details`
+
+|'remark'|comments made|`fact_details`
+
+|'death_cause'|comments made|`fact_details`
+
+|'child_birth_order'|birth order among other children|`fact_details`
+
+|'sex_birth_order'|birth order among other girls or boys|`fact_details`
+
+|===
+
+[NOTE]
+====
+For a **residence** fact, the place of address is held in the `residenes`
+table, which **person_facts** references using person_facts.place_id.
+Since residences are most often shared with others, we also have the
+`shared_residences` table.
+
+`facts_details` stores an attribute other than the event's date. For `birth_order`
+and `sex_birth_order`, we store the `int`, the order among the children, in `birth_orders`.
+For a `residence` fact, we use the `residences.address` address information
+for an individual. 
+====
+
+The other facts in `person_facts` are self-descriptive. 
+
+[source,sql]
+----
+create table if not exists facts_details (
+ fact_id int not null primary key,
+ details varchar(65) not null,
+ foreign key(fact_id) references person_facts(id) 
+) engine = INNODB;
+----
+
+Now to query, say, all the jobs an individual held, one would look for all his
+(or her) **job** facts found in every recorded event for the individual, and then
+return all the associated `facts_details.details` where `event_facts.type='job'`
+

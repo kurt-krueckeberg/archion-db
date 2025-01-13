@@ -1,0 +1,65 @@
+= Overview 
+
+The custodian of the Kirchenbücher for Schaumburg-Lippe is the Niedersachsen Landesarchiv (Lower Saxony
+state archive), and their Kirchenbücher holdings can be viewed using the link:http://www.arcinsys.niedersachsen.de/arcinsys/llist?nodeid=g1722&page=1&reload=true&sorting=41[Arcysys catolog system].
+
+Digitized images of of Schaumburg-Lippe holdings of the Niedersachsen Landesarchiv are availbe (for a subscription)
+on the the Archion Protestant Kirchenbücher link:https://archion.de[portal].
+
+== Design
+
+Unlike a genealogy program, this database doesn't represent individuals over their lifetime, rather individuals
+are tied to an event, they `event_persons`, conceptually tied to a specific event.
+
+The goal of the database is to identify with the greatest certainty possible whether an individual mentioned in
+one record is the same individual mentioned in a different record several years later. To do this, all of the
+individual's (the specific `event_persons.id`) identifying characteristics need to be captured, so they can be
+compared. Besides the individual's name, we capture there facts about an indvidual, including the date and place
+of the fact:
+ 
+* baptism
+* birth--including whether it was legitimate or illegitimate
+* birth order
+* sex birth order
+* approximate birth year--calculated based on the **age** listed in the record
+* burial
+* confirmation
+* death
+* death cause
+* funeral
+* gender
+* job description and place of employment (which may differ from place of residence)
+* marriage proclamation (also known as **marriage ban**)
+* residence--consisting of address number and locality's name
+* widow or widower
+* remarks about the individual 
+
+The relationship facts (including the date and place, if mentioned, for the relationship) captured are:
+
+* parent-child relationship
+* husband-wife relationship
+* infant-sponsor relationship
+
+NOTE: The approximate birth year is derived from an individual's **age** found in a church record.
+
+== Natural Language Searches
+
+Once the facts above have been put in the database, natural language searches on surname and given names allow us to
+generate snapshots of an individual.
+
+In MySQL, full-text search is done using `match()` and `against`. `match()` specifies the columns you want to search, and
+`against()` takes the search expression:
+
+[source,sql]
+----
+select some_col1, some_col2, etc 
+    from some_view
+  where
+    match(title,description) against(‘Krückeberg’ in natural language mode);
+----
+
+NOTE: `in natural language mode` is the default mode, so it can be omitted.
+
+
+You can also perform boolean searches using boolean mode. See https://www.mysqltutorial.org/mysql-full-text-search/mysql-natural-language-full-text-searches/[MySQL
+Natural Language Full-Text Searches].

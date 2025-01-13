@@ -1,0 +1,419 @@
+= Documentation
+
+This first group of tables save attributes related to documenting and
+providiing cititions of ceremonies recorded in church register entries:
+
+* `archives`
+** `collections`
+*** `parishes`
+**** `registers`
+***** `images`
+****** `events`
+
+This group of tables models a containment hierarchy. Each Bundesland has one or
+more state archives responsible for the church registers or Kirchenbücher
+of those parishes within their jurisdiction. Some archives organize 
+parish Kirchenbücher in named collections.
+
+The digitized parish register's images available on Archion.de are
+always of two pages--aalthough a page, usually the left, may be blank.
+Finally, the digital images contain entries of the ceremonies or events
+of the birth/baptism, marriage, confirmation, death/funeral.
+
+== Archives
+
+Below is the `archives` table. It has the name of the Bundesland `bundesland`,
+the archive’s unique `name` and its website's unique `url`.
+
+[source,sql]
+----
+create database if not exists archion;
+use archion;
+
+create table if not exists archives (
+    id int auto_increment not null primary key,
+    bundesland varchar(50) not null,
+    name varchar(50) not null,
+    url varchar(100) not null,
+    unique(bundesland),
+    unique(name),
+    unique(url)
+) engine = INNODB;
+----
+
+== Collections
+
+Collections, for those archives that use collections, are uniquely identified
+by primary key `id`, have unique name `name` and reference the archive that owns
+it using the foreign key `archive_id`.
+
+[source,sql]
+----
+create table if not exists collections (
+   id int auto_increment not null primary key,
+   name varchar(100) not null,
+   archive_id int not null,
+   unique(name),
+   foreign key(archive_id) references archives(id)
+) engine = INNODB;
+----
+
+== Parishes
+
+The church locality or *Ort* and not by the name of the church’s building is
+used to name designiate a church parish. For example, while *St. Cosmas und St.
+Damian* is the name of the  Lutheran church building in Petzen, **Petzen** is
+used to refer to the parish.
+
+The parish is identified by its primary key `id`, its location or `ort`,
+which is not guaranteed to be unique since there may be another
+locality with the same name in a different Bundesland.
+
+[source,sql]
+----
+create table if not exists parishes (
+  id int not null auto_increment primary key,
+  ort varchar(50) not null
+) engine=INNODB;
+----
+
+== Parish Collections
+
+`parish_collections` contains parish registers that reside in
+collections. The parish is identified by its the primary key
+`parish_id` that is also a foreign key that references the
+parish key `parishes.id`. The collection `collection_id` of the references
+`collections.id`.
+
+Since a parish register `parishes.id` can only be in one collection,
+`parish_id` can serve as the primary key, and the pair (`parish_id`,
+`collection_id`) will also be unique.
+
+[source,sql]
+----
+create table if not exists parish_collections (
+  parish_id int not null primary key,
+  collection_id int not null,
+  unique(parish_id, collection_id),
+  foreign key(parish_id) references parishes(id), 
+  foreign key(collection_id) references collections(id) 
+) engine = INNODB;
+----
+
+== Parishes not in Collections
+
+Parishes not organized in collections are in `parish_archives`.
+Since a register is in one and only one archive, `parish_id`
+can serve as the key, and it is also a foreign key to the
+particular `parishes.id`; furthermore, the pair 
+(`parish_id`, `archive_id`) is unique.
+
+[source,sql]
+----
+create table if not exists parish_archives (
+  parish_id int not null primary key,
+  archive_id int not null,
+  unique(parish_id, archive_id),
+  foreign key(parish_id) references parishes(id), 
+  foreign key(archive_id) references archives(id) 
+) engine = INNODB;
+----
+
+== Church Registers
+
+The `registers` is the relvar is the Kirchenbücher relvar. Each individual church
+register volume within a parish is uniquely identifed by its primay key `id`;
+it has volume name `name`, and a unique shorter name `shortname`; it has foreign
+key `parish_id` that references the parish. The pair
+----
+  (`name`, `parish_id`)
+----
+is also unique. The register's individual volume `name` is not guaranteed to be unique
+because there is the chance, however remote, that another volume might have the same name.
+
+IMPORTANT: `registers.shortname` will be references by the **yaml** files that contain
+the facts in the ceremony. 
+
+[source,sql]
+----
+create table if not exists registers (
+   id int not null auto_increment primary key,
+   name varchar(100) not null,
+   shortname varchar(15) not null,
+   parish_id int not null,
+   total_images int not null,
+   unique(shortname),
+   unique(name, parish_id),
+   foreign key(parish_id) references parishes(id) 
+) engine=INNODB;
+----
+
+.`shortname`
+****
+The `shortname` is  is a unique abbreviation or shorter name that can be used
+instead of the longer `registers.name`. It is also a key for the `registers`
+table. The **yaml** files that contain the facts for the ceremony use `shortname`.
+
+Below is an example
+
+.Yaml excerpt that uses `shortname`
+[,yaml]
+----
+# Yaml file corresponding to petzen/vol2-image355.adoc
+citation:
+  image:
+    image_num: 348
+    permalink: http://www.archion.de/p/de1fdbc46c/
+    lpage_num: 722
+    shortname: petzen1 
+event: marriage
+# remainder snipped...
+----
+
+`shortname` will also be used by the code that reads these fact-containing yaml files,
+in order to more easily retrieve the primary key `registers.id`. 
+
+Rather than hardcoding the primary keys in the fact-contaiing **yaml** files,
+`shortname` is used instead. For every `shortname` found in a fact-containing **yaml** file, there
+must be a tuple in `registers` with the `shortname` it references; otherwise, an exception
+is thrown.
+****
+
+=== Inserting Top-Level Navigation
+
+For our purpose, this command line SQL script can be used to initialize
+the above tables with the actual top-level navigation that we require:
+
+[source,sql]
+----
+insert into archives(bundesland, name, url) values("Niedersachsen", "Niedersächsiches Landesarchiv", "https://nla.niedersachsen.de/startseite/"); 
+set @archive_id = last_insert_id();
+insert into collections(name, archive_id) values("Kirchenbücher der Evangelisch-Lutherischen Landeskirche Schaumburg-Lippe", @archive_id);  
+set @collection_id = last_insert_id();
+insert into parishes(ort) values("Petzen");
+set @petzen_id = last_insert_id();
+insert into parishes(ort) values("Frille");
+set @frille_id = last_insert_id();
+insert into parish_collections(parish_id, collection_id) values (@petzen_id, @collection_id), (@frille_id, @collection_id);
+insert into registers(name, shortname, parish_id, total_images) values("Verzeichnis der Getauften und Konfirmierten, 1641-1784", "petzen1a", @petzen_id, 239);
+insert into registers(name, shortname, parish_id, total_images) values("Verzeichnis der Getrauten und Gestorbenen, 1641-1784", "petzen1b", @petzen_id, 239);
+insert into registers(name, shortname, parish_id, total_images) values("Verzeichnis der Getauften, Konfirmierten, Getrauten und Gestorbenen 1785-1827", "petzen2", @petzen_id, 357);
+insert into registers(name, shortname, parish_id, total_images) values("Verzeichnis der Getauften, Getrauten, Gestorbenen 1664-1757", "frille1", @frille_id, 389);
+insert into registers(name, shortname, parish_id, total_images) values("Verzeichnis der Getauften, Getrauten, Gestorbenen 1758-1804", "frille2", @frille_id, 388);
+----
+
+== Images and Events Tables
+
+=== Images Table
+
+Each image in a church register volume includes both a left and right page.
+Each image is uniquely identied by its primary integer key `id` and includes
+the foreign key `register_id` that references the register it is from, and
+each image is identified by its image number `image_num`, with the the
+pair `(register_id, image_num)` being unique, `permalink` is the unique
+Archion-generated permanent URL to the image, `ymlfile` is the unique name of
+the yaml file that contains all information, all facts and relationship facts,
+to be captured in the database for all the events recorded in one particular
+register image.
+
+[source,sql]
+----
+create table if not exists images (
+    id int not null auto_increment primary key,
+    image_num int not null,
+    lpage_num int not null,
+    permalink varchar(60) not null,
+    register_id int not null,
+    ymlfile varchar(45) not null,
+    unique (register_id, image_num),
+    unique (permalink),
+    unique (ymlfile),
+    foreign key(register_id) references registers(id)
+) engine = INNODB;
+----
+
+The total number of images is approximately
+
+`ceiling ( (number of pages in church register) / 2 )`
+
+The register’s cover page is often the first Archion image for a
+register volume, but since the cover never has recorded entries,
+`image_num` *1* will never be in the `images` table. Sometimes the very
+first page that has entries is the right hand-side page because the
+left-hand page is blank. And sometimes the left-hand page will have an
+even number, so `start_page` may not be an odd number.
+
+== Place Names and Residences
+
+In **GedcomX** `events` and `person_facts` have a **place** attribute.
+We intend to use `place_names.locality` as the "place".
+
+The "same" locality (usually a village) is often spelled slightly differently.
+For example, 'Berenbusch' is also spelled 'Bärenbusch' or 'Baerenbusch'.  
+
+We choose 'Berenbusch' as the official or canonical spelling (because today
+there is a Berenbuscher Straße where the village once was) and consider
+'Bärenbusch' and 'Baerenbsuch' alternate spelling. To keep track of which
+`place_names.locality` is the "official" spelling and which `place_names.locality`
+tuples are alternative spellings of it, the attribute `place_names.aliasof_id`
+is used. It is a foreign key that refers to the `place_names.id` of the
+canonical, official spelling.
+
+This example show the relationship between `aliasof_id` and the primary key
+`id`.
+
+[caption="Example of "]
+.`place_names` table
+[%autoheader, frame="none", grid="rows]
+|===
+|id | locality | aliasof_id 	
+
+|1 | Unknown | 1
+               
+|2 | Petzen  | 2
+               
+|3 | Nordholz| 3
+               
+|4 | Berenbusch| 4
+               
+|5 | Bärenbusch| 4
+|===
+
+In the 4^th^ tuple, `place_names.id=4` and `place_names.aliasof_id=4`. This is
+because **Berenbusch** is the "official" spelling. Its _alias_ is itself.
+
+In the next tuple,  `place_names.id=5` and `place_names.aliasof_id=4` because
+**Bärenbusch** is an alternate spelling. It is an alternate or equivalent spelling
+for the place name **Berenbusch**. It is not a different locality. 
+
+[source,sql]
+----
+create table if not exists place_names (
+  id int auto_increment not null primary key,
+  locality varchar(30) not null, 
+  unique(locality),
+  aliasof_id int,
+  foreign key(aliasof_id) references place_names(id)
+) engine=INNODB;
+----
+
+[NOTE]
+====
+To display all spellings of all localities, along with their "official" spellings,
+`place_names` is joined to itself:
+
+[source,sql]
+----
+create or replace view all_localities_and_their_official_spellings as 
+select rhs.locality as locality, lhs.aliasof_id as official_spelling
+ from
+   place_names as lhs
+ inner join place_names as rhs
+   on lhs.id=rhs.aliasof_id;
+----
+
+====
+
+`residences` represents residence addresses. It holds all the unique addresses for a
+place name, a locality.
+
+The pair `[residences.placename_id, residences.address]` is unique. Here are examples:
+
+.Example of [placename_id, address] pair
+|===
+| `placename_id` `(place_name.locality)` | `address`
+
+| 2 (Petzen) | 4
+
+| 5 (Bärenbusch) | 19
+
+| 5 (Bärenbusch) | 2
+
+| 5 (Bärenbusch) | 12
+
+| 1 (Petzen) | 12
+
+| 4 (Berenbusch) | 4
+
+| 3 (Nordholz) | 11
+
+| 3 (Nordholz) | 2
+|===
+
+`placename_id`. `residences` has primary key `id`; it has `placename_id` a foreign
+key that references `place_names.id`, which represents the locality's name; it
+has address `address`, which is typically just a number but we allow it to be longer.
+
+[source,sql]
+----
+create table if not exists residences (
+  id int auto_increment not null primary key,
+  placename_id int not null,
+  address int not null,
+  unique(address, placename_id),
+  foreign key(placename_id) references place_names(id)
+) engine=INNODB;
+----
+
+[IMPORTANT]
+.Place and Dates in Facts versus Events
+====
+A **marriage** fact, for example, will have the identical date as the marriage event.
+A **birth** fact, however, recorded in a baptism event will have a different date.
+A **proclaimed** (marriage bann, or proclamaion) fact likewise will have a different
+date than the marriage event in which it is recorded.
+
+A fact will also have a place associated with it that might be different than the
+place of the event (in which the fact is found). The place of a birth, for example, 
+recorded in a baptims event will be the parent's home village. It most cases it
+will a different than the locality of the church.
+
+To distinguish between these different types of dates, we use the `person_events.date_type` 
+enumeration whose values are: 'known', 'unknown' and 'approx_year'.
+====
+
+=== Events Table
+
+The `events` table stores the recorded church ceremonies for the 
+ceremonies or events of:
+
+* baptism
+* birth (double check if births are ever separately recorded from
+baptisms).
+* confirmation
+* marriage
+* funeral (double check whether burials are separately recorded from
+deaths)
+
+An entry has a primary integer key `id`, a foregin key `image_id` of the
+image it is on, date it was viewed `view_date`, the date `date` of the
+ceremony, the type event `event`, and the entry's  `entry_num` on the
+page.
+
+[source,sql]
+----
+create table if not exists events ( 
+   id int not null auto_increment primary key,
+   event ENUM(
+        'birth',
+        'baptism',
+        'confirmation',
+        'marriage',
+        'death',
+        'funeral'
+   ) NOT NULL,
+   view_date date not null,
+   evdate DATE NOT NULL,
+   entry_num int not null,
+   place_id int not null,
+   image_id int not null,
+   foreign key(image_id) references images(id),
+   foreign key(place_id) references place_names(id)
+) engine = INNODB;
+----
+
+The ternay tuple (`image_id`, `page_num`, `entry_num`) is not unique,
+however, since two different events recorded in two different parish
+registers might be recorded on the same image number, page number and
+entry number.
+

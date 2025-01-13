@@ -1,0 +1,165 @@
+= `general-settings.yml` File
+
+The `general-settings.yml` file has two top section sections: `register_shortnames` and `place_names`.
+
+== `register_shortnames` Section
+
+[,yml]
+----
+register_shortnames:
+  - petzen1a
+  - petzen1b
+  - petzen2
+  - frille1
+  - frille2
+----
+
+This table explains how the regsiter shortnames correspond to the conventions used in the fact-containing `.yml` files. The
+church registers actual name is also listed.
+
+.How shortnames Work
+[cols="1,1,3,7",%autoheader,frame="none",grid="rows"]
+|===
+|shortame| Parish| Example use in `.yml` file |Kirchenbuch
+
+| petzen1a | Petzen | `petzen-band1a-image153.adoc`|Verzeichnis der Getauften und Konfirmierten, 1641-1784
+
+| petzen1b | Petzen | `petzen-band1b-image52.adoc`|Verzeichnis der Getrauten und Gestorbenen, 1641-1784 
+
+| petzen2  | Petzen | `petzen-band2-image27.adoc`| Verzeichnis der Getauften, Konfirmierten, Getrauten und Gestorbenen 1785-1827
+
+| frille1 | Frille | `frille-band1-image117.adoc`|Verzeichnis der Getauften, Getrauten, Gestorbenen 1664-1757
+
+| frille2 | Frille | `frille-band2-image331.adoc` |Verzeichnis der Getauften, Getrauten, Gestorbenen 1758-1804
+|===
+	
+The shortname are referenced in the top of the invidual fact-containing `.yml` files. Below is an example of how:
+
+[,yml]
+----
+register: 
+  shortname: petzen2
+----
+
+== `place_names` Section
+
+The other section begins with the key `place_names` and looks something like this:
+
+[,hml]
+----
+place_names:
+   - locality: &unknown unknown
+     alias: self 
+   - locality: &petzen Petzen
+     alias: self 
+   - locality: &nordholz Nordholz
+     alias: self 
+   - locality: &berenbusch Berenbusch
+     alias: self 
+   - locality: &baerenbusch Bärenbusch
+     alias: *berenbusch
+   - locality: &evesen Evesen
+     alias: *evesen
+----
+
+This is the  prospective code design involving the `place_names` section and the fact-containing `.yml` files.
+
+We'll just use the locality names found in `place_names:` section of the `general-settings.yml` file
+in the individual fact-containing `.yml` files.
++
+All the place names including the official, canoncial version of the place name, and what it is
+an alias of, must already be in the database before we process the `.yml` files. 
+
+Then as we read and process the `.yml` files and encounter a reference to one of the localities (`locality:`)
+found in the `general-settings.yml` file, along with an address (`address:`), we will check if it is already
+in the `places` table; if not, we will insert it.
+
+Below is an excerpt from a fact-containing `.yml` files:
+
+[,yml]
+----
+image:
+  image_num: 348
+  permalink: https://www.archion.de/p/de1fdbc46c/
+  lpage_num: 722
+  events:
+    - event: marriage
+      locality: Petzen
+      view_date: 2023-10-26
+      evdate: &event_date 1822-03-12
+      entry_num: 6
+      persons:
+        - key: &husband 'husband'
+          given: Friedrich Wilhelm
+          surname: Drifftmeier
+          gender: male
+          facts:
+            - type: marriage
+              locality: Evesen
+              fact_date: *event_date
+              date_type: known
+            - type: residence
+              fact_date: *event_date
+              date_type: known
+              locality: Berenbusch
+            - type: widower
+              date_type: known
+              fact_date: *event_date
+              locality: Berenbusch
+            - type: job
+              fact_date: *event_date
+              date_type: known
+              locality: Berenbusch
+              fact_details: day-laborer
+            - type: approx_birth_year
+              fact_date: *event_date
+              date_type: approx_year
+              details: 1780-00-00
+              locality: Berenbusch
+        - key: &father 'father'
+          given: Heinrich
+          surname: Krückeberg
+          gender: male
+          facts:
+            - type: deceased # <--- New fact type
+              fact_date: 0000-00-00 # <-- TODO: Is this the date of the death?
+              date_type: unknown
+              locality: Evesen
+        - key: &daughter 'daughter'
+          given: Philippine Louise Eelonore
+          surname: Kruckeberg # <-- TODO: Should I use a canonical spelling?
+          gender: female
+          facts:
+            - type: marriage
+              locality: Evesen
+	      address: 19
+              date_type: known
+              fact_date: *event_date
+            - type: approx_birth_year
+              locality: Unknown
+              date_type: approx_year
+              fact_date: 1793-00-00
+            - type: legitimate
+              locality: Unknown
+              date_type: approx_year
+              fact_date: 1793-00-00
+      relationships:
+        - type: parent_child
+          person1: *father
+          person2: *daughter
+        - type: husband_wife
+          person1: *husband
+          person2: *daughter
+----
+
+To do this, we will create a hashtable that maps `place_names.localty` to `place_names.id`.
+
+The code will validate the the `locality` found in a fact in a fact-containing `yml` file does actually exist.
+
+If not, it will throw an exception. If it does exist, it will check whether the unique pair (`places.placename_id`,
+`places.address`) exists. If it does, nothing needs to be done. To check whether this pair, it will check a
+hashtable that maps `places.placename_id` to an array of addresses.
+
+If it does not exist, it will insert the new address into `places` and add the new address to the array of addresses
+corresponding to the `places.placename_id`.
+

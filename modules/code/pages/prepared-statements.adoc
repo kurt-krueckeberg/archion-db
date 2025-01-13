@@ -1,0 +1,28 @@
+= Prepared Statements 
+
+NOTE: `parish_collections` and `parish_archives` are mutually exclusive: + 
+only one of must be executed. See xref:ROOT:documentation-tables.adoc#parish-collections[`parish_collection` versus `parish_archives`].
+
+.Prepared Insert Statements
+[cols="1a,3l"]
+|===
+|Table|Insert Statement
+
+|archives
+|insert into archives(bundesland, name, url) values(:bundesland, :name, :url)
+
+|collections
+|insert into collections(name, archive_id) values(:name, :archive_id)
+
+|parishes
+|insert into parishes(ort) values(:ort)
+
+|parish_collections
+|insert into parish_collections(parish_id, collection_id) values(:parish_id, :collection_id)
+
+|parish_archives
+|insert into parish_archives(parish_id, archive_id) values(:parish_id, :archive_id)
+
+|registers
+|insert into church_registers(name, parish_id) values(:name, :parish_id, :total_images)
+|===

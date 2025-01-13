@@ -1,0 +1,11 @@
+name: archion-db
+title: Archion Database
+version: '1.0' 
+# start_page: genealogy::index.adoc
+asciidoc:
+  attributes:
+    source-language: asciidoc@
+    table-caption: false
+nav:
+  - modules/ROOT/nav-top.adoc
+  - modules/code/nav.adoc

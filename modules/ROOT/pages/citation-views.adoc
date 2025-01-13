@@ -1,0 +1,117 @@
+= Citation
+
+Attributes of BCG-compliant Archion citations include the following
+attributes:
+
+[arabic]
+. *permalink* URL of the image
+. *date* the image was viewed
+. The *path* to the image consisting of:
+* *Bundesland*
+* *Archive*
+* Optional *Collection*, if one is used for organizing a parish register
+* *Parish*
+* Register *volume name*.
+* *Image number* (of N Total)
+* *Page number*
+* *Entry number*
+
+These attribues can be seen in this sample citation:
+
+> "Archion Protestant Kirchenbücher Portal", database with images, Archion
+> (http://www.archion.de/p/c70f7cb090/ : 10 October 2023),
+> path: Niedersachsen > Niedersächsisches Landesarchiv Kirchenbücher der
+> Evangelisch-Lutherischen Landeskirche Schaumburg-Lippe > Petzen >
+> Verzeichnis der Getauften, Konfirmierten, Getrauten und Gestorbenen
+> 1785-1827 > Image 198 of 357 > page 120 > Entry 10
+
+== Navigation Path and Image Cited
+
+The citation view composes two other views, one for the **navigation path**
+and one for the **image cited**. The `cited_paths` view holds the
+navigation path, which is this portion of a citation
+To the above we add the page number and the entry number on the page:
+
+> Nordrhein-Westfalen > Archiv der Lippischen Landeskirche > Almena >
+> Beerdigungen 1919-1978 > Image 3 of 241 > Page 7 > Entry 8
+
+> (https://www.archion.de/p/dcd4d9993d/ : 2 May 2023)
+
+== The Navigation and Citations Views
+
+The `navigation` view simplifies the `citations` view. It returns the
+navigation paths with there assoicated parish keys as `parish_id`.
+
+[source,sql]
+----
+create or replace view navigation as
+select concat_ws(' > ',
+         archives.name,
+         collections.name,
+         parishes.ort) as
+         nav_path,
+         parishes.id as parish_id
+     from
+        archives
+     inner join
+        collections on collections.archive_id=archives.id
+     inner join
+        parish_collections as pc on collections.id=pc.collection_id
+     inner join
+        parishes on pc.parish_id=parishes.id
+union
+ select concat_ws(' > ',
+          archives.name,
+          parishes.ort) as
+          nav_path,
+          parishes.id as parish_id
+    from 
+       archives 
+    inner join
+       parish_archives as pa on pa.archive_id=archives.id
+    inner join
+       parishes on parishes.id=pa.parish_id;
+----
+
+We now create the `citations` view, which adds to the navigation
+path.
+
+[NOTE]
+.Joining views on `event_id`
+====
+The `citations` view below returns the `entires.id` as `event_id`, so does
+the `all_couples`
+====
+
+[source,sql]
+----
+create or replace view citations as
+select
+ concat(
+    'Archion Protestant Kirchenbücher Portal database with images, Archion (',
+    images.permalink,
+    ' : ',
+    events.view_date,
+    ' path: '),
+ concat_ws(
+    nav_path, ' > ',
+    images.image_num, " of ",
+    registers.total_images, " > ",
+    date_format(events.evdate, "%e %M %Y"), 
+    events.entry_num),
+    events.id as event_id
+from navigation as n
+inner join 
+     registers on registers.parish_id=n.parish_id
+inner join
+     images    on images.register_id=registers.id
+inner join 
+     events   on events.image_id=images.id;
+----
+
+To select individual citations for a particular `events.id`, specify
+the **event_id**:
+
+```sql
+select citations where event_id:some_event_id 
+```

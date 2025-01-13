@@ -1,0 +1,9 @@
+= Derived Views
+
+Derived relvars can be created for
+
+* xref:citation-views.adoc[Citations]
+* xref:couples-views.adoc[couple and Family Relationships]
+* xref:godparents-view.adoc[Godparents]
+* xref:fact-related-views.adoc[Fact-Related Views] for homes, i.e., shared residences
+* TODO:what about relationship facts for parent_child relationships?

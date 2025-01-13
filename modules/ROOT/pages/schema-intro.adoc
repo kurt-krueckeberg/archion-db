@@ -1,0 +1,218 @@
+= Schema Overview
+
+The tables can roughly be grouped according to their purpose. There are two broad groups of tables: one for supporting citations,
+the other supporting the capture of recorded church events and their facts about individuals.
+
+== Citation-Related Tables
+
+This first group of tables save attributes related to citing the church register entries:
+
+* `archives`
+* `collections`
+* `parishes`
+* `registers`
+* `images`
+* `events`
+
+These tables model a containment hierarchy. Each Bundesland has one or more state archives
+repsonsible for maintaing church registers or Kirchenbücher for parishes within their
+jurisdiction. Parish’s Kirchenbücher volume may be further organized within collections.
+
+== Saving Relevant Register Entries
+
+The `events` table has the relevant recorded church ceremonies for these ceremonies:
+
+* baptism
+* birth (double check if births are ever separately recorded from baptisms)
+* confirmation
+* marriage
+* funeral (double check wheterh burials are separately recorded from deaths)
+
+== Citation-Related Views
+
+Attributes of BCG-compliant Archion citations include:
+
+[arabic]
+. *permalink* URL of the image
+. *date* the image was viewed
+. The *path* to the image consisting of:
+. *Bundesland*
+. *Archive*
+. Optional *Collection*, if one is used for organizing a parish register
+. *Parish*
+. Register *volume name*.
+
+These can be illustrated by the sample citations below.
+
+=== Example Citations for Registers in Collections within an Archive
+
+* example 1:
+
+____
+``Archion Protestant Kirchenbücher Portal'', database with images,
+Archion (https://www.archion.de/p/6ebd3448c0/: 23 November 2023), path:
+Niedersachsen > Niedersächsisches Landesarchiv > Kirchenbücher der
+Evangelisch-Lutherischen Landeskirche Schaumburg-Lippe > Petzen >
+Verzeichnis der Getauften und Konfirmierten, 1641-1784 > Image 167 of
+322
+____
+
+* example 2:
+
+____
+``Archion Protestant Kirchenbücher Portal'', database with images,
+Archion (http://www.archion.de/p/4af33a94aa/ : 10 October 2023), path:
+Niedersachsen > Niedersächsisches Landesarchiv Kirchenbücher der
+Evangelisch-Lutherischen Landeskirche Schaumburg-Lippe > Petzen >
+Verzeichnis der Getauften, Konfirmierten, Getrauten und Gestorbenen
+1785-1827 > Image 125 of 357
+____
+
+* example 3:
+
+____
+``Archion Protestant Kirchenbücher Portal'', database with images,
+Archion (https://www.archion.de/p/11732ef7c6/ : 12 November 2023), path:
+Niedersachsen > Niedersächsisches Landesarchiv > Kirchenbücher der
+Evangelisch-Lutherischen Landeskirche Schaumburg-Lippe > Frille >
+Verzeichnis der Getauften, Getrauten, Gestorbenen 1758-1804 > Image 11
+of 388
+____
+
+=== Example for Registers not in Collections
+
+Here is one example:
+
+____
+``Archion Protestant Kirchenbücher Portal'', database with images,
+Archion (https://www.archion.de/p/dcd4d9993d/ : 2 May 2023), path:
+Nordrhein-Westfalen > Archiv der Lippischen Landeskirche > Almena >
+Beerdigungen 1919-1978 > Image 3 of 241
+____
+
+=== The Citation View
+
+The citation view composes two other views, one for the navigation path
+and one for the image cited. The `cited_paths` is the view holding the
+navigation path, which is this portion of a citation
+
+____
+*Nordrhein-Westfalen > Archiv der Lippischen Landeskirche > Almena >
+Beerdigungen 1919-1978 > Image 3 of 241*
+____
+
+The `cited_images` view has the portion of the citation with the
+parenthesis that appear before the word ``path:'':
+
+____
+*(https://www.archion.de/p/dcd4d9993d/ : 2 May 2023)*
+____
+
+== Tables Related to Facts about Persons and Families
+
+`event_persons` are the individuals mentioned in a church register
+entry. Each individual in a recorded ceremnoy will have a unique id,
+even if it is ``obvious'' that they are the same person in different
+entry.
+
+In this design each person mentioned in an different event/ceremony,
+event if it ``obvious'' they are the same person mentioned in the
+current event, is a new unique person in `event_persons`.
+
+== Tables for Facts Found in Recorded Church Ceremonies
+
+The facts table enumerates the possible facts found in a recorded churh
+ceremony. It also has the place and date of the fact. Three of the facts
+involve two persons:
+
+[arabic]
+. Parents who have a child: `parent_child`
+. Sponsors or godparents of baptized infants: `godparent_infant`
+. A man and woman who marry: `husband_wife`
+
+When such a relationship fact is discovered in a recorded entry, it is saved
+in `relationships_facts`. All the other, non-relationship facts are individual
+facts. When they are encountered, they are stored in the `person_facts`.
+
+The **facts table predicate**: the enumerations `type` of all possible facts
+is the key, and it is accompanied by a unique `description`.
+
+As soon as you have an events with people you have names because people
+have names. So you don’t need a `name' fact.
+
+There are three facts specific to relationships between two people:
+
+[arabic]
+. A parent who has a child: `parent_child`
+. A sponsor or godparent of a baptized infant: `godparent_infant`
+. A man who marries a woman: `husband_wife`
+
+`person_facts` are all the facts about each person mentioned in a
+recorded church register entries that do not involve relationships (of
+parent to child, godparent to baptized baby or husband to wife).
+Questions: Can some facts occurs more than once, like `parent_of`, in
+one entry? I don’t think so.
+
+== Facts and Fact-Derived View
+
+There are two categories of facts: Those facts about individuals, and facts about
+relationships between two individuals. In the second category, there may be additional facts
+about the relationship between the two individuals. For example, a `couple` or a
+`husband_wife` relationship that results in children may have information about the birth order
+of the children. Birth order is an example of an additional related fact about the `couple` or
+`husband_wife` relationship. In fact, it is the only additional fact about such a relationship,
+and the other relationship have no such additional facts.
+
+=== Family/Couples View
+
+TODO: Do I need to add `couples` to the sentence below and to the `all_couples` and
+`all_couples_with_children`.
+
+Using relationshsip facts `parent_of` and `husband_wife`, we can
+generate views of couples in an event and and any children they migh
+have had, who are mentioned in the event. We choose to call the view
+`event_families` even though some couples might never have had children.
+
+=== Residences, homes, are always `shared' by one or more
+
+Residences are not derived relvar, views, since they have address
+attributes.
+
+Typically more than one person lives in a residence whose address is
+given How do we handle the date when the person lived there? If each
+person in each event is conisdered unique, then isn’t there residence at
+the time also unique? With each recored church ceremonites, aren’t we
+just tracking or capuring a moment in time, a snapshot? Isn’t that what
+this database is all about?
+
+=== Jobs Held
+
+Jobs held is not a derived relvar. It is not a view since it requires an attribute
+for the name or title or generic description of the job.
+
+In order to avoid duplication, we first gather all the possible jobs or job `titles'
+in a `jobs` table.
+
+== Propsective inter-event Relationship Tables
+
+To link couples based on shared identifying attributes found in
+different church entries could be done. This should be based on keeping
+tracking as many common identifying facts as possible, perhaps along
+with notes or comments about these common linking facts. One idea would
+be a `couples` table, along with a `children` table and a
+`couples_evidence` table that contains facts from several different
+recorded church entries. Maybe we also need to include facts like
+jobs-held and residences lived in?
+
+It would be good to review Shannon Green’s article that inspired this
+database.
+
+== Table for Individaul Facts found in a Recorded Event?
+
+A view with all the individual facts that are not related...
+
+== Table for an Evidence-Based Prospective Family Tree
+
+This table is related to conclusions for common identity between
+`image_persons` I think it should hold the common shared facts.
+

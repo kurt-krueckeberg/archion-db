@@ -1,0 +1,41 @@
+= `FilesystemIterator` Flags
+
+Understand these link:https://www.php.net/manual/en/class.filesystemiterator.php#filesystemiterator.constants.key-as-filename[FilesystemIterator flags]
+
+[caption="Analysis of:"]
+.FilesystemIterator flags
+[cols="a1,a2"]
+|===
+|flag|use
+
+|`FilesystemIterator::CURRENT_AS_PATHNAME`
+|Makes `FilesystemIterator::current()` return the pathname.
+
+|`FilesystemIterator::CURRENT_AS_FILEINFO`
+|Makes `FilesystemIterator::current()` return an SplFileInfo instance.
+
+|`FilesystemIterator::CURRENT_AS_SELF`
+|Makes `FilesystemIterator::current()` return $this (the FilesystemIterator).
+
+|`FilesystemIterator::CURRENT_MODE_MASK`
+|Masks FilesystemIterator::current()
+
+|`FilesystemIterator::KEY_AS_PATHNAME`
+|Makes `FilesystemIterator::key()` return the pathname.
+
+|`FilesystemIterator::KEY_AS_FILENAME`
+|Makes `FilesystemIterator::key()` return the filename.
+
+|`FilesystemIterator::FOLLOW_SYMLINKS`
+|Makes `RecursiveDirectoryIterator::hasChildren()` follow symlinks.
+
+|`FilesystemIterator::KEY_MODE_MASK`
+|Masks `FilesystemIterator::key()`
+
+|`FilesystemIterator::NEW_CURRENT_AND_KEY`
+|Same as `FilesystemIterator::KEY_AS_FILENAME \| FilesystemIterator::CURRENT_AS_FILEINFO`.
+
+|`FilesystemIterator::OTHER_MODE_MASK`
+|Mask used for `FilesystemIterator::getFlags()` and `FilesystemIterator::setFlags()`.
+|===
+

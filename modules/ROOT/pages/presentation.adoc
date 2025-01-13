@@ -1,0 +1,38 @@
+= Presenting Event Information
+
+Relationship and individual facts are determined by the type of
+ceremony. All ceremonies name the participants.
+
+Only a baptism would give the godparents. A precise date of birth will be
+given in a baptism, but the year of birth can be derived from the 
+individuals age given in a marriage, confirmation, burial/funeral entry--
+typically not in a remark.
+
+The `relationships` and `person_facts` tables contain all the facts for
+each participant in the event. This is what we want to display along with
+the recorded event's transliteral and translation.
+
+== Facts for Each Event
+
+The exact format of to display the facts would prospectively be
+1. a family group sheet or a family table for family/couple relationships
+2. all the individual facts listed for each perticipant. This could include
+. shared residences or prior residences
+. birth date approixmately, gender, sex, birth order
+
+=== Getting the Information
+
+Code and SQL to support it.
+
+[arabic]
+. I would select from `all_couples_w_wo_children` based on the `entries.id`,
+. Get the residences shared for all the individuals in the event and
+show those living together in a shared residence
+. Get personal data in `person_facts` for each individual, perhaps excluding
+the shared residences, and display this person by person, grouped by surname
+and maiden name, if this is a marriage.
+. I would then display the fact information in that event for each person.
+
+== Timelines for Families
+
+== Searching 
