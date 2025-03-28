@@ -1,5 +1,49 @@
 = Overview 
 
+== MySQL Settings for DATE of 000-00-00
+
+To check MySQL global and session settings for `sql_mode`, which controls whether things like zero dates (0000-00-00)
+are allowed
+
+1. Check Global SQL Mode (Affects All Databases)
+
+[source,sql]
+----
+SHOW GLOBAL VARIABLES LIKE 'sql_mode';
+____
+
+If `sql_mode` contains `NO_ZERO_DATE` or `STRICT_TRANS_TABLES`, then zero dates are not allowed.
+
+2. Check Session SQL Mode (For Your Current Connection)
+
+
+[source,sql]
+----
+SHOW SESSION VARIABLES LIKE 'sql_mode';
+____
+
+3. Check SQL Mode for a Specific Database
+
+There’s no direct way to check SQL mode per database, but you can switch to the database and check the session mode:
+
+4. Allow Zero Dates in MySQL
+
+If you want to allow `0000-00-00` values, remove `NO_ZERO_DATE` and `STRICT_TRANS_TABLES` from `sql_mode`:
+
+[,sql]
+----
+SET GLOBAL sql_mode = 'ONLY_FULL_GROUP_BY,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+----
+
+Then restart MySQL:
+
+[,bash]
+----
+sudo systemctl restart mysql
+----
+
+== Introduction
+
 The custodian of the Kirchenbücher for Schaumburg-Lippe is the Niedersachsen Landesarchiv (Lower Saxony
 state archive), and their Kirchenbücher holdings can be viewed using the link:http://www.arcinsys.niedersachsen.de/arcinsys/llist?nodeid=g1722&page=1&reload=true&sorting=41[Arcysys catolog system].
 
