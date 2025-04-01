@@ -86,7 +86,7 @@ image:
     - event: marriage
       locality: Petzen
       view_date: 2023-10-26
-      evdate: &event_date 1822-03-12
+      date: &event_date 1822-03-12
       entry_num: 6
       persons:
         - key: &husband 'husband'

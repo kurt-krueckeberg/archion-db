@@ -1,5 +1,7 @@
 = Overview 
 
+TODO: Events always have a DATE; otherwise, it is not truly an event. A fact may not have a date.
+
 == MySQL Settings for DATE of 000-00-00
 
 To check MySQL global and session settings for `sql_mode`, which controls whether things like zero dates (0000-00-00)

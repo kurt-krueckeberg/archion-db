@@ -97,7 +97,7 @@ select
     nav_path, ' > ',
     images.image_num, " of ",
     registers.total_images, " > ",
-    date_format(events.evdate, "%e %M %Y"), 
+    date_format(events.date, "%e %M %Y"), 
     events.entry_num),
     events.id as event_id
 from navigation as n

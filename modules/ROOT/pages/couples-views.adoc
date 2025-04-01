@@ -40,7 +40,7 @@ select
    r.id          as relationship_id,
    r.type        as type_of_relationship,
    r.person2     as person2,
-   events.evdate   as event_date,
+   events.date   as event_date,
    events.event  as event_type,
    events.id     as event_id
  from 
@@ -81,7 +81,7 @@ select
    r.id          as relationship_id,
    r.type        as type_of_relationship,
    r.person2     as person2,
-   events.evdate   as event_date,
+   events.date   as event_date,
    events.event  as event_type,
    events.id     as event_id
  from 
@@ -160,7 +160,7 @@ create or replace view all_couples2 as
    females.id      as female_id,
    rf.type         as type_of_relationship,
    rf.person2      as person2,
-   events.evdate  as event_date,
+   events.date  as event_date,
    events.event as event_type
  from
     event_persons as men
@@ -185,7 +185,7 @@ select
    females.id        as female_id,
    rf.type           as relationship_type,
    rf.person2        as person2,
-   events.evdate  as event_date,
+   events.date  as event_date,
    events.event as event_type
  from
     event_persons as men

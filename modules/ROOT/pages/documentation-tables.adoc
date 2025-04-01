@@ -403,7 +403,7 @@ create table if not exists events (
         'funeral'
    ) NOT NULL,
    view_date date not null,
-   evdate DATE NOT NULL,
+   date DATE NOT NULL,
    entry_num int not null,
    place_id int not null,
    image_id int not null,
